@@ -69,6 +69,7 @@ tree_grid <- grid_regular(cost_complexity(),
                           tree_depth(),
                           levels = c(10, 5))
 
+## fitting the tree model
 tree_fits <- tree_wkf |> 
   tune_grid(resamples = dia_5_fold,
             grid = tree_grid,
@@ -92,3 +93,43 @@ tree_best_fit <- tree_final_fit |>
 tree_best_fit
 ```
 
+## Random Forest
+A random forest is a model that combines multiple classification trees that are created from boostrap samples. It uses the aggregate from the trees to find an average across them all. Additionally, it does not use all predictors in each step. It can be a useful alternative to a single classification tree as those are prone to over fitting. As a result, it may produce a better model.
+```{r}
+library(ranger)
+
+## defining the rf model
+rf_spec <- rand_forest(mtry = tune()) |>
+  set_engine("ranger", importance = "impurity") |>
+  set_mode("classification")
+
+## creating the rf workflow
+rf_wkf <- workflow() |>
+  add_recipe(tree_rec) |>
+  add_model(rf_spec)
+
+## fitting the rf model
+rf_fits <- rf_wkf |> 
+  tune_grid(resamples = dia_5_fold,
+            grid = 5,
+            metrics = metric_set(mn_log_loss))
+```
+
+```{r}
+## selecting the best model
+rf_best_params <- rf_fits |>
+  select_best(metric = "mn_log_loss")
+
+rf_final_wkf <- rf_wkf |>
+  finalize_workflow(rf_best_params)
+
+rf_final_fit <- rf_final_wkf |>
+  last_fit(dia_split, metrics = metric_set(mn_log_loss))
+
+rf_best_fit <- rf_final_fit |>
+  collect_metrics()
+
+rf_best_fit
+```
+
+The Random Forest is the better model in the case as it produces a smaller log loss.
