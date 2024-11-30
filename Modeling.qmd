@@ -49,6 +49,46 @@ A classification tree is a model that splits up predictor space into regions. Th
 ## creating the tree recipe
 tree_rec <-
   recipe(dia_binary ~ ., data = dia_data) |>
-  step_dummy(smoker, exercise, fruits, veggies, alcohol)
+  step_dummy(smoker, exercise, fruits, veggies, alcohol) |>
+  step_normalize(all_numeric(), -all_outcomes())
+
+## defining the tree model
+tree_mod <- decision_tree(tree_depth = tune(),
+                          min_n = 20,
+                          cost_complexity = tune()) |>
+  set_engine("rpart") |>
+  set_mode("classification")
+
+## creating the tree workflow
+tree_wkf <- workflow() |>
+  add_recipe(tree_rec) |>
+  add_model(tree_mod)
+
+## creating the tree tuning grid
+tree_grid <- grid_regular(cost_complexity(),
+                          tree_depth(),
+                          levels = c(10, 5))
+
+tree_fits <- tree_wkf |> 
+  tune_grid(resamples = dia_5_fold,
+            grid = tree_grid,
+            metrics = metric_set(mn_log_loss))
+```
+
+```{r}
+## selecting the best model
+tree_best_params <- tree_fits |>
+  select_best(metric = "mn_log_loss")
+
+tree_final_wkf <- tree_wkf |>
+  finalize_workflow(tree_best_params)
+
+tree_final_fit <- tree_final_wkf |>
+  last_fit(dia_split, metrics = metric_set(mn_log_loss))
+
+tree_best_fit <- tree_final_fit |>
+  collect_metrics()
+
+tree_best_fit
 ```
 
