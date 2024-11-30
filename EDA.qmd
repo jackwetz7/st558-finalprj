@@ -1,0 +1,69 @@
+---
+title: "EDA"
+format: html
+editor: visual
+---
+
+## About The Data
+This data set provides information on over 200,000 Americans from 2015 with the primary response variable being whether the person is diabetic. I will be analyzing to see how and what lifestyle choices result in a higher chance of diabetes among Americans. This will include diet, exercise, and smoking habits. The goal is to see how much these different lifestyle choices can increase the risk of diabetes among Americans.
+
+
+## Data Preparation
+First I will be subsetting the data set to only use the variables that I need for my analysis. I will also be converting the binary numerical variables into factors with meaningful level names.
+```{r}
+## reading in the data
+library(tidyverse)
+temp_data <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv", col_names = TRUE)
+
+## subsetting the data
+dia_data <- temp_data |>
+  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump) |>
+  drop_na() |>
+  # turning binary vars into factors
+  mutate(Diabetes_binary = factor(Diabetes_binary, levels = c(0, 1), labels = c("no diabetes", "diabetes"))) |>
+  mutate(Smoker = factor(Smoker, levels = c(0, 1), labels = c("has not smoked 5 packs", "has smoked 5 packs"))) |>
+  mutate(PhysActivity = factor(PhysActivity, levels = c(0, 1), labels = c("no exercise last 30 days", "has exercised last 30 days"))) |>
+  mutate(Fruits = factor(Fruits, levels = c(0, 1), labels = c("does not eat fruit daily", "eats fruit daily"))) |>
+  mutate(Veggies = factor(Veggies, levels = c(0, 1), labels = c("does not eat veggies daily", "eats veggies daily"))) |>
+  mutate(HvyAlcoholConsump = factor(HvyAlcoholConsump, levels = c(0, 1), labels = c("not a heavy drinker", "heavy drinker")))
+
+str(dia_data)
+```
+
+## Data Summarization
+Now I will see how frequent diabetes is among those with the different levels of the other factor variables. With the exception of heavy alcohol consumption, diabetics appear to be more likely to partake in the unhealthy lifestyle choices.
+```{r}
+## contingency tables
+table(dia_data$Diabetes_binary, dia_data$Smoker)
+table(dia_data$Diabetes_binary, dia_data$PhysActivity)
+table(dia_data$Diabetes_binary, dia_data$Fruits)
+table(dia_data$Diabetes_binary, dia_data$Veggies)
+table(dia_data$Diabetes_binary, dia_data$HvyAlcoholConsump)
+```
+
+Now I will create graphs to better visual some of these findings.
+```{r}
+## basic plots
+ggplot(dia_data, aes(x = Diabetes_binary, fill = Smoker)) +
+  geom_bar(position = "dodge") +
+  labs(x = "Diabetic?", title = "Lifetime Smoking Habits Affect on Diabetes")
+
+ggplot(dia_data, aes(x = Diabetes_binary, fill = Fruits)) +
+  geom_bar(position = "dodge") +
+  labs(x = "Diabetic?", title = "Fruit Eating Habits Affect on Diabetes")
+```
+
+There is also a singular numerical variable, BMI, which I will be analyzing. This shows that the average BMI is higher for those with diabetes than those without.
+```{r}
+dia_data |>
+  group_by(Diabetes_binary) |>
+  summarize(mean(BMI))
+
+ggplot(dia_data, aes(x = Diabetes_binary, y = BMI)) +
+  geom_boxplot() +
+  labs(x = "Diabetic?", title = "BMI of People with and without Diabetes")
+```
+
+
+
+[Click here for the Modeling Page](Modeling.html)
