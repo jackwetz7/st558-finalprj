@@ -4,3 +4,51 @@ format: html
 editor: visual
 ---
 
+## About the Models
+The goal of these models is to see how different lifestyle choices affect the likelihood of an American having diabetes. This will include diet, exercise, and smoking habits.
+
+## Preparing Data for Models
+First I will read in the data again, subsetting it the same it was in the EDA.
+```{r}
+## reading in data again
+library(tidyverse)
+temp_data <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv", col_names = TRUE)
+
+## subsetting the data
+dia_data <- temp_data |>
+  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump) |>
+  drop_na() |>
+  # turning binary vars into factors
+  mutate(Diabetes_binary = factor(Diabetes_binary, levels = c(0, 1), labels = c("no diabetes", "diabetes"))) |>
+  mutate(Smoker = factor(Smoker, levels = c(0, 1), labels = c("has not smoked 5 packs", "has smoked 5 packs"))) |>
+  mutate(PhysActivity = factor(PhysActivity, levels = c(0, 1), labels = c("no exercise last 30 days", "has exercised last 30 days"))) |>
+  mutate(Fruits = factor(Fruits, levels = c(0, 1), labels = c("does not eat fruit daily", "eats fruit daily"))) |>
+  mutate(Veggies = factor(Veggies, levels = c(0, 1), labels = c("does not eat veggies daily", "eats veggies daily"))) |>
+  mutate(HvyAlcoholConsump = factor(HvyAlcoholConsump, levels = c(0, 1), labels = c("not a heavy drinker", "heavy drinker")))
+
+names_vec <- c("dia_binary","bmi", "smoker", "exercise", "fruits", "veggies", "alcohol")
+names(dia_data) <- names_vec
+```
+
+Now I will do a 70/30 split for the training/testing data sets.
+```{r}
+## splitting the data
+library(tidymodels)
+set.seed(123)
+dia_split <- initial_split(dia_data, 0.7)
+dia_train <- training(dia_split)
+dia_test <- testing(dia_split)
+
+## set up for cross validation
+dia_5_fold <- vfold_cv(dia_train, 5)
+```
+
+## Classification Tree
+A classification tree is a model that splits up predictor space into regions. Then a prediction is made based on which bin an observation ends up in. The goal is to predict group membership, usually using the most prevalent class in a region as the prediction.
+```{r}
+## creating the tree recipe
+tree_rec <-
+  recipe(dia_binary ~ ., data = dia_data) |>
+  step_dummy(smoker, exercise, fruits, veggies, alcohol)
+```
+

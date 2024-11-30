@@ -27,6 +27,8 @@ dia_data <- temp_data |>
   mutate(Veggies = factor(Veggies, levels = c(0, 1), labels = c("does not eat veggies daily", "eats veggies daily"))) |>
   mutate(HvyAlcoholConsump = factor(HvyAlcoholConsump, levels = c(0, 1), labels = c("not a heavy drinker", "heavy drinker")))
 
+names_vec <- c("dia_binary","bmi", "smoker", "exercise", "fruits", "veggies", "alcohol")
+names(dia_data) <- names_vec
 str(dia_data)
 ```
 
@@ -34,21 +36,21 @@ str(dia_data)
 Now I will see how frequent diabetes is among those with the different levels of the other factor variables. With the exception of heavy alcohol consumption, diabetics appear to be more likely to partake in the unhealthy lifestyle choices.
 ```{r}
 ## contingency tables
-table(dia_data$Diabetes_binary, dia_data$Smoker)
-table(dia_data$Diabetes_binary, dia_data$PhysActivity)
-table(dia_data$Diabetes_binary, dia_data$Fruits)
-table(dia_data$Diabetes_binary, dia_data$Veggies)
-table(dia_data$Diabetes_binary, dia_data$HvyAlcoholConsump)
+table(dia_data$dia_binary, dia_data$smoker)
+table(dia_data$dia_binary, dia_data$exercise)
+table(dia_data$dia_binary, dia_data$fruits)
+table(dia_data$dia_binary, dia_data$veggies)
+table(dia_data$dia_binary, dia_data$alcohol)
 ```
 
 Now I will create graphs to better visual some of these findings.
 ```{r}
 ## basic plots
-ggplot(dia_data, aes(x = Diabetes_binary, fill = Smoker)) +
+ggplot(dia_data, aes(x = dia_binary, fill = smoker)) +
   geom_bar(position = "dodge") +
   labs(x = "Diabetic?", title = "Lifetime Smoking Habits Affect on Diabetes")
 
-ggplot(dia_data, aes(x = Diabetes_binary, fill = Fruits)) +
+ggplot(dia_data, aes(x = dia_binary, fill = fruits)) +
   geom_bar(position = "dodge") +
   labs(x = "Diabetic?", title = "Fruit Eating Habits Affect on Diabetes")
 ```
@@ -56,10 +58,10 @@ ggplot(dia_data, aes(x = Diabetes_binary, fill = Fruits)) +
 There is also a singular numerical variable, BMI, which I will be analyzing. This shows that the average BMI is higher for those with diabetes than those without.
 ```{r}
 dia_data |>
-  group_by(Diabetes_binary) |>
-  summarize(mean(BMI))
+  group_by(dia_binary) |>
+  summarize(mean(bmi))
 
-ggplot(dia_data, aes(x = Diabetes_binary, y = BMI)) +
+ggplot(dia_data, aes(x = dia_binary, y = bmi)) +
   geom_boxplot() +
   labs(x = "Diabetic?", title = "BMI of People with and without Diabetes")
 ```
