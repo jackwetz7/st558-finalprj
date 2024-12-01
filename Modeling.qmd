@@ -131,5 +131,32 @@ rf_best_fit <- rf_final_fit |>
 
 rf_best_fit
 ```
+```{r}
+# Extract the final fitted parsnip model
+final_model <- extract_fit_parsnip(rf_final_fit)
+
+best_model <- rf_wkf |>
+  finalize_workflow(rf_best_params) |>
+  fit(dia_data)
+
+# Variable importance
+
+new_data <- tibble(
+  bmi = 40,
+  smoker = factor("has not smoked 5 packs", levels = c("has not smoked 5 packs", "has smoked 5 packs")),
+  exercise = factor("no exercise last 30 days", levels = c("no exercise last 30 days", "has exercised last 30 days")),
+  fruits = factor("does not eat fruit daily", levels = c("does not eat fruit daily", "eats fruit daily")),
+  veggies = factor("does not eat veggies daily", levels = c("does not eat veggies daily", "eats veggies daily")),
+  alcohol = factor("heavy drinker", levels = c("not a heavy drinker", "heavy drinker"))
+)
+rf_trained_wkf <- rf_final_fit$.workflow[[1]]
+
+
+class_predictions <- predict(best_model, new_data, type = "prob")
+
+class_predictions
+
+```
+
 
 The Random Forest is the better model in the case as it produces a smaller log loss.

@@ -61,87 +61,46 @@ best_model <- rf_wkf |>
   fit(dia_data)
 
 
+## creating API endpoints
+library(plumber)
 
-library(GGally)
-library(leaflet)
+## setting default values for pred endpoint
+default_vals <- list(pred1 = mean(dia_data$bmi),
+                     pred2 = names(which.max(table(dia_data$smoker))),
+                     pred3 = names(which.max(table(dia_data$exercise))),
+                     pred4 = names(which.max(table(dia_data$fruits))),
+                     pred5 = names(which.max(table(dia_data$veggies))),
+                     pred6 = names(which.max(table(dia_data$alcohol))))
 
-#Send a message
-#* @get /readme
-function(){
-  "This is our basic API"
-}
-
-#http://localhost:PORT/readme
-
-
-#* Find natural log of a number
-#* @param num Number to find ln of
-#* @get /ln
-function(num){
-  log(as.numeric(num))
-}
-
-#query with http://localhost:PORT/ln?num=1
-
-#* Find multiple of two numbers
-#* @param num1 1st number
-#* @param num2 2nd number
-#* @get /mult
-function(num1, num2){
-  as.numeric(num1)*as.numeric(num2)
-}
-
-#query with http://localhost:PORT/mult?num1=10&num2=20
-
-#* Plot of iris data
-#* @serializer png
-#* @param type base or ggally
-#* @param color TRUE or FALSE (only for ggally)
-#* @get /plotiris
-function(type = "base", color = FALSE){
-  if(tolower(type) == "ggally"){
-    if(color){
-      a <- GGally::ggpairs(iris, aes(color = Species))
-      print(a)
-    } else {
-      a <- GGally::ggpairs(iris)
-      print(a)
-    }
-  } else {
-    pairs(iris)
-  }
-}
-#http://localhost:PORT/plotiris?type=ggally
-
-
-#* Plotting widget
-#* @serializer htmlwidget
-#* @param lat latitude
-#* @param lng longitude
-#* @get /map
-function(lng = 174.768, lat = -36.852){
-  m <- leaflet::leaflet() |>
-    addTiles() |>  # Add default OpenStreetMap map tiles
-    addMarkers(as.numeric(lng), as.numeric(lat))
-  m  # Print the map
-}
-
-#query with http://localhost:PORT/map?lng=174&lat=-36
-
-
-# Choose a predictor
-#* @param predictor
+## pred endpoint
+#* @param pred1
+#* @param pred2
+#* @param pred3
+#* @param pred4
+#* @param pred5
+#* @param pred6
 #* @get /pred
-function(predictor) {
-  data <- iris
-  if (is.numeric(data[[predictor]])) {
-    value <- mean(data[[predictor]])
-    message <- paste("The mean of", predictor, "is", value)
-    return(message)
-  } else if (predictor == "Species") {
-    table <- table(data[[predictor]])
-    return(paste0(names(table), ": ", table))
-  } else {
-    stop("Invalid predictor.")
-  }
+function(pred1 = default_vals$pred1,
+         pred2 = default_vals$pred2,
+         pred3 = default_vals$pred3,
+         pred4 = default_vals$pred4,
+         pred5 = default_vals$pred5,
+         pred6 = default_vals$pred6) {
+  
+  input_data <- tibble(
+    bmi = as.numeric(pred1),
+    smoker = factor(pred2, levels = c("has not smoked 5 packs", "has smoked 5 packs")),
+    exercise = factor(pred3, levels = c("no exercise last 30 days", "has exercised last 30 days")),
+    fruits = factor(pred4, levels = c("does not eat fruit daily", "eats fruit daily")),
+    veggies = factor(pred5, levels = c("does not eat veggies daily", "eats veggies daily")),
+    alcohol = factor(pred6, levels = c("not a heavy drinker", "heavy drinker"))
+  )
+  
+  predict(best_model, input_data, type = "prob")
+
 }
+# query with http://127.0.0.1:6810/pred?pred1=20
+# query with http://127.0.0.1:6810/pred?pred1=50&pred2=has%20smoked%205%20packs&pred3=no%20exercise%20last%2030%20days&pred4=does%20not%20eat%20fruit%20daily&pred5=does%20not%20eat%20veggies%20daily&pred6=heavy%20drinker
+# query with http://127.0.0.1:6810/pred?pred2=has%20smoked%205%20packs&pred3=no%20exercise%20last%2030%20days
+
+
