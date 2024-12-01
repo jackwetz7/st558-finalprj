@@ -132,14 +132,9 @@ rf_best_fit <- rf_final_fit |>
 rf_best_fit
 ```
 ```{r}
-# Extract the final fitted parsnip model
-final_model <- extract_fit_parsnip(rf_final_fit)
-
 best_model <- rf_wkf |>
   finalize_workflow(rf_best_params) |>
   fit(dia_data)
-
-# Variable importance
 
 new_data <- tibble(
   bmi = 40,
@@ -149,13 +144,8 @@ new_data <- tibble(
   veggies = factor("does not eat veggies daily", levels = c("does not eat veggies daily", "eats veggies daily")),
   alcohol = factor("heavy drinker", levels = c("not a heavy drinker", "heavy drinker"))
 )
-rf_trained_wkf <- rf_final_fit$.workflow[[1]]
 
-
-class_predictions <- predict(best_model, new_data, type = "prob")
-
-class_predictions
-
+predict(best_model, new_data, type = "prob")
 ```
 
 
