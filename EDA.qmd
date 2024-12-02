@@ -17,7 +17,7 @@ temp_data <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv", col_nam
 
 ## subsetting the data
 dia_data <- temp_data |>
-  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump) |>
+  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump, MentHlth, PhysHlth) |>
   drop_na() |>
   # turning binary vars into factors
   mutate(Diabetes_binary = factor(Diabetes_binary, levels = c(0, 1), labels = c("no diabetes", "diabetes"))) |>
@@ -27,7 +27,7 @@ dia_data <- temp_data |>
   mutate(Veggies = factor(Veggies, levels = c(0, 1), labels = c("does not eat veggies daily", "eats veggies daily"))) |>
   mutate(HvyAlcoholConsump = factor(HvyAlcoholConsump, levels = c(0, 1), labels = c("not a heavy drinker", "heavy drinker")))
 
-names_vec <- c("dia_binary","bmi", "smoker", "exercise", "fruits", "veggies", "alcohol")
+names_vec <- c("dia_binary","bmi", "smoker", "exercise", "fruits", "veggies", "alcohol", "ment_hlth", "phys_hlth")
 names(dia_data) <- names_vec
 str(dia_data)
 ```
@@ -55,11 +55,19 @@ ggplot(dia_data, aes(x = dia_binary, fill = fruits)) +
   labs(x = "Diabetic?", title = "Fruit Eating Habits Affect on Diabetes")
 ```
 
-There is also a singular numerical variable, BMI, which I will be analyzing. This shows that the average BMI is higher for those with diabetes than those without.
+There are also a three numerical variables which I will be analyzing, BMI, Mental Health, Physical Health. The latter two variables are how many days the person has spent thinking about that type of health in the last 30 days. This shows that the average BMI is higher for those with diabetes than those without. The same is true for both Health variables.
 ```{r}
 dia_data |>
   group_by(dia_binary) |>
   summarize(mean(bmi))
+
+dia_data |>
+  group_by(dia_binary) |>
+  summarize(mean(ment_hlth))
+
+dia_data |>
+  group_by(dia_binary) |>
+  summarize(mean(phys_hlth))
 
 ggplot(dia_data, aes(x = dia_binary, y = bmi)) +
   geom_boxplot() +

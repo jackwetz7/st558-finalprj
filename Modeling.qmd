@@ -16,7 +16,7 @@ temp_data <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv", col_nam
 
 ## subsetting the data
 dia_data <- temp_data |>
-  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump) |>
+  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump,MentHlth, PhysHlth) |>
   drop_na() |>
   # turning binary vars into factors
   mutate(Diabetes_binary = factor(Diabetes_binary, levels = c(0, 1), labels = c("no diabetes", "diabetes"))) |>
@@ -26,7 +26,7 @@ dia_data <- temp_data |>
   mutate(Veggies = factor(Veggies, levels = c(0, 1), labels = c("does not eat veggies daily", "eats veggies daily"))) |>
   mutate(HvyAlcoholConsump = factor(HvyAlcoholConsump, levels = c(0, 1), labels = c("not a heavy drinker", "heavy drinker")))
 
-names_vec <- c("dia_binary","bmi", "smoker", "exercise", "fruits", "veggies", "alcohol")
+names_vec <- c("dia_binary","bmi", "smoker", "exercise", "fruits", "veggies", "alcohol", "ment_hlth", "phys_hlth")
 names(dia_data) <- names_vec
 ```
 
@@ -46,6 +46,7 @@ dia_5_fold <- vfold_cv(dia_train, 5)
 ## Classification Tree
 A classification tree is a model that splits up predictor space into regions. Then a prediction is made based on which bin an observation ends up in. The goal is to predict group membership, usually using the most prevalent class in a region as the prediction.
 ```{r}
+set.seed(123)
 ## creating the tree recipe
 tree_rec <-
   recipe(dia_binary ~ ., data = dia_data) |>
@@ -77,6 +78,7 @@ tree_fits <- tree_wkf |>
 ```
 
 ```{r}
+set.seed(123)
 ## selecting the best model
 tree_best_params <- tree_fits |>
   select_best(metric = "mn_log_loss")
@@ -96,6 +98,7 @@ tree_best_fit
 ## Random Forest
 A random forest is a model that combines multiple classification trees that are created from boostrap samples. It uses the aggregate from the trees to find an average across them all. Additionally, it does not use all predictors in each step. It can be a useful alternative to a single classification tree as those are prone to over fitting. As a result, it may produce a better model.
 ```{r}
+set.seed(123)
 library(ranger)
 
 ## defining the rf model
@@ -116,6 +119,7 @@ rf_fits <- rf_wkf |>
 ```
 
 ```{r}
+set.seed(123)
 ## selecting the best model
 rf_best_params <- rf_fits |>
   select_best(metric = "mn_log_loss")
@@ -132,8 +136,9 @@ rf_best_fit <- rf_final_fit |>
 rf_best_fit
 ```
 ```{r}
-best_model <- rf_wkf |>
-  finalize_workflow(rf_best_params) |>
+set.seed(123)
+best_model <- tree_wkf |>
+  finalize_workflow(tree_best_params) |>
   fit(dia_data)
 
 new_data <- tibble(
@@ -145,7 +150,10 @@ new_data <- tibble(
   alcohol = factor("heavy drinker", levels = c("not a heavy drinker", "heavy drinker"))
 )
 
-predict(best_model, new_data, type = "prob")
+
+final_pred <- predict(best_model, dia_data, type = "prob")
+final_pred |>
+  filter(.pred_diabetes > 0.5)
 ```
 
 

@@ -36,7 +36,7 @@ rf_rec <-
   step_normalize(all_numeric(), -all_outcomes())
 
 ## defining the rf model
-rf_spec <- rand_forest(mtry = tune()) |>
+rf_spec <- rand_forest(mtry = 4) |>
   set_engine("ranger", importance = "impurity") |>
   set_mode("classification")
 
@@ -103,4 +103,23 @@ function(pred1 = default_vals$pred1,
 # query with http://127.0.0.1:6810/pred?pred1=50&pred2=has%20smoked%205%20packs&pred3=no%20exercise%20last%2030%20days&pred4=does%20not%20eat%20fruit%20daily&pred5=does%20not%20eat%20veggies%20daily&pred6=heavy%20drinker
 # query with http://127.0.0.1:6810/pred?pred2=has%20smoked%205%20packs&pred3=no%20exercise%20last%2030%20days
 
+## info endpoint
+#* @get /info
+function() {
+  "My name is Jack Wetzel. My Github pages site can be found at https://jackwetz7.github.io/st558-finalprj/EDA.html"
+}
+# query with http://127.0.0.1:6810/info
 
+## confusion endpoint
+#* @get /confusion
+function() {
+  
+  final_pred <- predict(best_model, dia_data, type = "class")
+  
+  cm <- conf_mat(data = dia_data,
+                 truth = dia_binary,
+                 estimate = final_pred$.pred_diabetes)
+  
+  autoplot(cm, type = "mosaic")
+}
+# query with http://127.0.0.1:6810/confusion
