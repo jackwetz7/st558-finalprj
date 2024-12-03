@@ -86,8 +86,6 @@ function(pred1 = default_vals$pred1,
   )
   
   predict(best_model, input_data, type = "class")
-  predict(best_model, input_data, type = "prob")
-
 }
 # query with http://127.0.0.1:4884/pred?pred1=20
 # query with http://127.0.0.1:4884/pred?pred1=50&pred2=has%20smoked%205%20packs&pred3=has%20exercised%20last%2030%20days&pred4=eats%20fruit%20daily&pred5=eats%20veggies%20daily&pred6=not%20a%20heavy%20drinker&pred7=30&pred8=30
@@ -101,9 +99,11 @@ function() {
 # query with http://127.0.0.1:4884/info
 
 ## confusion endpoint
+#* @serializer jpeg
 #* @get /confusion
 function() {
   
+  library(ggplot2)
   final_pred <- predict(best_model, dia_data, type = "class")
   
   cm_df <- tibble(dia_binary = dia_data$dia_binary,
