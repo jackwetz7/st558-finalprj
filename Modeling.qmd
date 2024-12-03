@@ -16,7 +16,7 @@ temp_data <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv", col_nam
 
 ## subsetting the data
 dia_data <- temp_data |>
-  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump,MentHlth, PhysHlth) |>
+  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump, MentHlth, PhysHlth) |>
   drop_na() |>
   # turning binary vars into factors
   mutate(Diabetes_binary = factor(Diabetes_binary, levels = c(0, 1), labels = c("no diabetes", "diabetes"))) |>
@@ -142,19 +142,62 @@ best_model <- tree_wkf |>
   fit(dia_data)
 
 new_data <- tibble(
-  bmi = 40,
-  smoker = factor("has not smoked 5 packs", levels = c("has not smoked 5 packs", "has smoked 5 packs")),
+  bmi = 50,
+  smoker = factor("has smoked 5 packs", levels = c("has not smoked 5 packs", "has smoked 5 packs")),
   exercise = factor("no exercise last 30 days", levels = c("no exercise last 30 days", "has exercised last 30 days")),
   fruits = factor("does not eat fruit daily", levels = c("does not eat fruit daily", "eats fruit daily")),
   veggies = factor("does not eat veggies daily", levels = c("does not eat veggies daily", "eats veggies daily")),
-  alcohol = factor("heavy drinker", levels = c("not a heavy drinker", "heavy drinker"))
+  alcohol = factor("heavy drinker", levels = c("not a heavy drinker", "heavy drinker")),
+  ment_hlth = 30,
+  phys_hlth = 30
 )
 
 
-final_pred <- predict(best_model, dia_data, type = "prob")
-final_pred |>
-  filter(.pred_diabetes > 0.5)
+final_pred <- predict(best_model, new_data, type = "class")
+final_pred
+
+
+
+cm_df <- tibble(dia_binary = dia_data$dia_binary,
+                pred_class = as.factor(final_pred$.pred_class))
+
+cm <- conf_mat(data = cm_df,
+                 truth = dia_binary,
+                 estimate = pred_class)
+
+autoplot(cm, type = "mosaic")
+```
+
+```{r}
+test_mod <- decision_tree(tree_depth = 11,
+                          min_n = 20,
+                          cost_complexity = 1e-10) |>
+  set_engine("rpart") |>
+  set_mode("classification")
+
+## creating the tree workflow
+test_wkf <- workflow() |>
+  add_recipe(tree_rec) |>
+  add_model(test_mod)
+
+## fitting best model to entire data set
+test_model <- test_wkf |>
+  fit(dia_data)
+
+test_wkf
+tree_final_wkf
+
+test_pred <- predict(test_model, dia_data, type = "class")
+
+cm_df <- tibble(dia_binary = dia_data$dia_binary,
+                pred_class = as.factor(test_pred$.pred_class))
+
+cm <- conf_mat(data = cm_df,
+                 truth = dia_binary,
+                 estimate = pred_class)
+
+autoplot(cm, type = "mosaic")
 ```
 
 
-The Random Forest is the better model in the case as it produces a smaller log loss.
+The Classification Tree is the better model in the case as it produces a smaller log loss.

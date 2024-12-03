@@ -4,7 +4,7 @@ temp_data <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv", col_nam
 
 ## subsetting the data
 dia_data <- temp_data |>
-  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump) |>
+  select(Diabetes_binary, BMI, Smoker, PhysActivity, Fruits, Veggies, HvyAlcoholConsump, MentHlth, PhysHlth) |>
   drop_na() |>
   # turning binary vars into factors
   mutate(Diabetes_binary = factor(Diabetes_binary, levels = c(0, 1), labels = c("no diabetes", "diabetes"))) |>
@@ -14,50 +14,31 @@ dia_data <- temp_data |>
   mutate(Veggies = factor(Veggies, levels = c(0, 1), labels = c("does not eat veggies daily", "eats veggies daily"))) |>
   mutate(HvyAlcoholConsump = factor(HvyAlcoholConsump, levels = c(0, 1), labels = c("not a heavy drinker", "heavy drinker")))
 
-names_vec <- c("dia_binary","bmi", "smoker", "exercise", "fruits", "veggies", "alcohol")
+names_vec <- c("dia_binary","bmi", "smoker", "exercise", "fruits", "veggies", "alcohol", "ment_hlth", "phys_hlth")
 names(dia_data) <- names_vec
 
-## splitting the data
 library(tidymodels)
-set.seed(123)
-dia_split <- initial_split(dia_data, 0.7)
-dia_train <- training(dia_split)
-dia_test <- testing(dia_split)
 
-## set up for cross validation
-dia_5_fold <- vfold_cv(dia_train, 5)
-
-library(ranger)
-
-## creating the rf recipe
-rf_rec <-
+## creating the tree recipe
+tree_rec <-
   recipe(dia_binary ~ ., data = dia_data) |>
   step_dummy(smoker, exercise, fruits, veggies, alcohol) |>
   step_normalize(all_numeric(), -all_outcomes())
 
-## defining the rf model
-rf_spec <- rand_forest(mtry = 4) |>
-  set_engine("ranger", importance = "impurity") |>
+## defining the tree model
+tree_mod <- decision_tree(tree_depth = 11,
+                          min_n = 20,
+                          cost_complexity = 1e-10) |>
+  set_engine("rpart") |>
   set_mode("classification")
 
-## creating the rf workflow
-rf_wkf <- workflow() |>
-  add_recipe(rf_rec) |>
-  add_model(rf_spec)
-
-## fitting the rf model
-rf_fits <- rf_wkf |> 
-  tune_grid(resamples = dia_5_fold,
-            grid = 5,
-            metrics = metric_set(mn_log_loss))
-
-## selecting the best model
-rf_best_params <- rf_fits |>
-  select_best(metric = "mn_log_loss")
+## creating the tree workflow
+tree_wkf <- workflow() |>
+  add_recipe(tree_rec) |>
+  add_model(tree_mod)
 
 ## fitting best model to entire data set
-best_model <- rf_wkf |>
-  finalize_workflow(rf_best_params) |>
+best_model <- tree_wkf |>
   fit(dia_data)
 
 
@@ -70,7 +51,9 @@ default_vals <- list(pred1 = mean(dia_data$bmi),
                      pred3 = names(which.max(table(dia_data$exercise))),
                      pred4 = names(which.max(table(dia_data$fruits))),
                      pred5 = names(which.max(table(dia_data$veggies))),
-                     pred6 = names(which.max(table(dia_data$alcohol))))
+                     pred6 = names(which.max(table(dia_data$alcohol))),
+                     pred7 = mean(dia_data$ment_hlth),
+                     pred8 = mean(dia_data$phys_hlth))
 
 ## pred endpoint
 #* @param pred1
@@ -79,13 +62,17 @@ default_vals <- list(pred1 = mean(dia_data$bmi),
 #* @param pred4
 #* @param pred5
 #* @param pred6
+#* @param pred7
+#* @param pred8
 #* @get /pred
 function(pred1 = default_vals$pred1,
          pred2 = default_vals$pred2,
          pred3 = default_vals$pred3,
          pred4 = default_vals$pred4,
          pred5 = default_vals$pred5,
-         pred6 = default_vals$pred6) {
+         pred6 = default_vals$pred6,
+         pred7 = default_vals$pred7,
+         pred8 = default_vals$pred8) {
   
   input_data <- tibble(
     bmi = as.numeric(pred1),
@@ -93,22 +80,25 @@ function(pred1 = default_vals$pred1,
     exercise = factor(pred3, levels = c("no exercise last 30 days", "has exercised last 30 days")),
     fruits = factor(pred4, levels = c("does not eat fruit daily", "eats fruit daily")),
     veggies = factor(pred5, levels = c("does not eat veggies daily", "eats veggies daily")),
-    alcohol = factor(pred6, levels = c("not a heavy drinker", "heavy drinker"))
+    alcohol = factor(pred6, levels = c("not a heavy drinker", "heavy drinker")),
+    ment_hlth = as.numeric(pred7),
+    phys_hlth = as.numeric(pred8)
   )
   
+  predict(best_model, input_data, type = "class")
   predict(best_model, input_data, type = "prob")
 
 }
-# query with http://127.0.0.1:6810/pred?pred1=20
-# query with http://127.0.0.1:6810/pred?pred1=50&pred2=has%20smoked%205%20packs&pred3=no%20exercise%20last%2030%20days&pred4=does%20not%20eat%20fruit%20daily&pred5=does%20not%20eat%20veggies%20daily&pred6=heavy%20drinker
-# query with http://127.0.0.1:6810/pred?pred2=has%20smoked%205%20packs&pred3=no%20exercise%20last%2030%20days
+# query with http://127.0.0.1:4884/pred?pred1=20
+# query with http://127.0.0.1:4884/pred?pred1=50&pred2=has%20smoked%205%20packs&pred3=has%20exercised%20last%2030%20days&pred4=eats%20fruit%20daily&pred5=eats%20veggies%20daily&pred6=not%20a%20heavy%20drinker&pred7=30&pred8=30
+# query with http://127.0.0.1:4884/pred?pred2=has%20smoked%205%20packs&pred3=no%20exercise%20last%2030%20days
 
 ## info endpoint
 #* @get /info
 function() {
   "My name is Jack Wetzel. My Github pages site can be found at https://jackwetz7.github.io/st558-finalprj/EDA.html"
 }
-# query with http://127.0.0.1:6810/info
+# query with http://127.0.0.1:4884/info
 
 ## confusion endpoint
 #* @get /confusion
@@ -116,10 +106,15 @@ function() {
   
   final_pred <- predict(best_model, dia_data, type = "class")
   
-  cm <- conf_mat(data = dia_data,
-                 truth = dia_binary,
-                 estimate = final_pred$.pred_diabetes)
+  cm_df <- tibble(dia_binary = dia_data$dia_binary,
+                  pred_class = as.factor(final_pred$.pred_class))
   
-  autoplot(cm, type = "mosaic")
+  cm <- conf_mat(data = cm_df,
+                 truth = dia_binary,
+                 estimate = pred_class)
+  
+  a <- autoplot(cm, type = "mosaic")
+  
+  print(a)
 }
-# query with http://127.0.0.1:6810/confusion
+# query with http://127.0.0.1:4884/confusion
