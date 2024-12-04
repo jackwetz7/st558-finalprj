@@ -75,5 +75,4 @@ ggplot(dia_data, aes(x = dia_binary, y = bmi)) +
 ```
 
 
-
 [Click here for the Modeling Page](Modeling.html)
