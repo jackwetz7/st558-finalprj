@@ -103,7 +103,6 @@ function() {
 #* @get /confusion
 function() {
   
-  library(ggplot2)
   final_pred <- predict(best_model, dia_data, type = "class")
   
   cm_df <- tibble(dia_binary = dia_data$dia_binary,
